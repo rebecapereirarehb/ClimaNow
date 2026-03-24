@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clima — Weather App</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- API Key Banner -->
+  <div id="api-banner" class="api-banner hidden">
+    <span>⚠️ Configure sua API Key do OpenWeatherMap no arquivo <code>script.js</code> → variável <code>API_KEY</code></span>
+    <button onclick="document.getElementById('api-banner').classList.add('hidden')">✕</button>
+  </div>
+
+  <!-- Background -->
+  <div class="bg-layer" id="bg-layer"></div>
+
+  <div class="app-container">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">◈</span>
+        <span class="logo-text">CLIMA</span>
+      </div>
+      <div class="header-controls">
+        <button class="btn-icon" id="btn-theme" title="Alternar tema">
+          <span id="theme-icon">☾</span>
+        </button>
+        <button class="btn-icon btn-fav-toggle" id="btn-favorites-toggle" title="Favoritos">
+          <span>☆</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Search -->
+    <section class="search-section">
+      <div class="search-wrapper">
+        <div class="search-box">
+          <span class="search-icon">⌕</span>
+          <input
+            type="text"
+            id="search-input"
+            placeholder="Buscar cidade..."
+            autocomplete="off"
+          />
+          <button class="btn-search" id="btn-search">Buscar</button>
+        </div>
+        <button class="btn-location" id="btn-location" title="Usar localização atual">
+          <span>⊕</span><span class="loc-text"> Localização</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Favorites Panel -->
+    <div class="favorites-panel hidden" id="favorites-panel">
+      <h3 class="panel-title">⭐ Cidades Favoritas</h3>
+      <div class="favorites-list" id="favorites-list"></div>
+      <p class="favorites-empty hidden" id="favorites-empty">Nenhuma cidade salva ainda.</p>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading hidden" id="loading">
+      <div class="loading-ring"></div>
+      <p>Buscando dados climáticos...</p>
+    </div>
+
+    <!-- Error -->
+    <div class="error-state hidden" id="error-state">
+      <span class="error-icon">⚠</span>
+      <p id="error-message">Cidade não encontrada.</p>
+      <button class="btn-retry" id="btn-retry">← Voltar</button>
+    </div>
+
+    <!-- Weather Content -->
+    <main class="weather-content hidden" id="weather-content">
+
+      <!-- Current Weather -->
+      <section class="current-weather card">
+        <div class="current-top">
+          <div class="location-info">
+            <h1 class="city-name" id="city-name">—</h1>
+            <p class="country-date" id="country-date">—</p>
+          </div>
+          <button class="btn-save-fav" id="btn-save-favorite" title="Salvar nos favoritos">
+            <span id="fav-icon">☆</span>
+          </button>
+        </div>
+
+        <div class="current-main">
+          <div class="temp-block">
+            <span class="temperature" id="temperature">—</span>
+            <span class="temp-unit">°C</span>
+          </div>
+          <div class="weather-icon-block">
+            <img src="" alt="" id="weather-icon" class="weather-icon" />
+            <p class="weather-desc" id="weather-desc">—</p>
+          </div>
+        </div>
+
+        <p class="feels-like" id="feels-like">Sensação térmica: —</p>
+      </section>
+
+      <!-- Stats Grid -->
+      <section class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-icon">💧</span>
+          <span class="stat-label">Umidade</span>
+          <span class="stat-value" id="humidity">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">💨</span>
+          <span class="stat-label">Vento</span>
+          <span class="stat-value" id="wind">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">🌧</span>
+          <span class="stat-label">Chuva (1h)</span>
+          <span class="stat-value" id="rain">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">🔵</span>
+          <span class="stat-label">Pressão</span>
+          <span class="stat-value" id="pressure">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">👁</span>
+          <span class="stat-label">Visibilidade</span>
+          <span class="stat-value" id="visibility">—</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-icon">☁</span>
+          <span class="stat-label">Nuvens</span>
+          <span class="stat-value" id="clouds">—</span>
+        </div>
+      </section>
+
+      <!-- Hourly Forecast -->
+      <section class="forecast-section">
+        <h2 class="section-title">⏰ Próximas Horas</h2>
+        <div class="hourly-carousel" id="hourly-carousel"></div>
+      </section>
+
+      <!-- Daily Forecast -->
+      <section class="forecast-section">
+        <h2 class="section-title">📅 Próximos Dias</h2>
+        <div class="daily-list" id="daily-list"></div>
+      </section>
+
+    </main>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">◈</div>
+      <p class="empty-title">Consulte o Clima</p>
+      <p class="empty-sub">Busque uma cidade ou use sua localização atual</p>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
