@@ -7,7 +7,7 @@
    https://openweathermap.org/api
    ============================================ */
 
-const API_KEY  = 'YOUR_API_KEY_HERE';
+const API_KEY  = 'd8511ecb1d01386d7fe343f1a4a0b702';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
 /* ─────────────────────────────────────────────
