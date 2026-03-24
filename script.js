@@ -7,7 +7,7 @@
    https://openweathermap.org/api
    ============================================ */
 
-const API_KEY  = 'd8511ecb1d01386d7fe343f1a4a0b702';
+const API_KEY  = '3e283ad17d6fdf3ec643837613c94443';
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
 /* ─────────────────────────────────────────────
@@ -17,6 +17,10 @@ let currentCityName    = null;   // nome da API (ex: "London")
 let currentCityDisplay = null;   // nome + país (ex: "London, GB")
 let favorites          = JSON.parse(localStorage.getItem('weather-favorites') || '[]');
 let isDark             = localStorage.getItem('weather-theme') !== 'light';
+let currentForecast    = null;   // dados da previsão para timelapse
+let map                = null;   // instância do mapa Leaflet
+let timelapseInterval  = null;   // intervalo para animação timelapse
+let currentTimelapseIndex = 0;  // índice atual no timelapse
 
 /* ─────────────────────────────────────────────
    Referências DOM
@@ -46,8 +50,14 @@ const emptyState       = $('empty-state');
 ───────────────────────────────────────────── */
 (function init() {
   // Banner se API key não foi configurada
-  if (API_KEY === 'YOUR_API_KEY_HERE') {
+  if (!API_KEY || API_KEY === '3e283ad17d6fdf3ec643837613c94443') {
     apiBanner.classList.remove('hidden');
+  }
+
+  // Se estiver usando a chave de exemplo fixa do projeto, avisar para substituir
+  if (API_KEY && API_KEY === '3e283ad17d6fdf3ec643837613c94443') {
+    apiBanner.classList.remove('hidden');
+    apiBanner.querySelector('span').textContent = '⚠️ Você está usando a chave pública de exemplo. Troque pela sua chave OpenWeatherMap em script.js';
   }
 
   // Tema
@@ -169,15 +179,21 @@ window.fetchWeather = async city => {
     ]);
 
     handleApiErrors(currentRes);
+    handleApiErrors(forecastRes);
 
     const current  = await currentRes.json();
     const forecast = await forecastRes.json();
+
+    // One Call para previsão horária (1h) e uso no timelapse
+    const oneCallRes = await fetch(`${BASE_URL}/onecall?lat=${current.coord.lat}&lon=${current.coord.lon}&exclude=minutely,daily,alerts&appid=${API_KEY}&units=metric&lang=pt_br`);
+    handleApiErrors(oneCallRes);
+    const oneCall = await oneCallRes.json();
 
     currentCityName    = current.name;
     currentCityDisplay = `${current.name}, ${current.sys.country}`;
     searchInput.value  = current.name;
 
-    renderUI(current, forecast);
+    renderUI(current, forecast, oneCall);
     showWeather();
     updateFavButton();
     favoritesPanel.classList.add('hidden');
@@ -197,15 +213,20 @@ async function fetchWeatherByCoords(lat, lon) {
     ]);
 
     handleApiErrors(currentRes);
+    handleApiErrors(forecastRes);
 
     const current  = await currentRes.json();
     const forecast = await forecastRes.json();
+
+    const oneCallRes = await fetch(`${BASE_URL}/onecall?lat=${current.coord.lat}&lon=${current.coord.lon}&exclude=minutely,daily,alerts&appid=${API_KEY}&units=metric&lang=pt_br`);
+    handleApiErrors(oneCallRes);
+    const oneCall = await oneCallRes.json();
 
     currentCityName    = current.name;
     currentCityDisplay = `${current.name}, ${current.sys.country}`;
     searchInput.value  = current.name;
 
-    renderUI(current, forecast);
+    renderUI(current, forecast, oneCall);
     showWeather();
     updateFavButton();
   } catch (err) {
@@ -218,7 +239,9 @@ async function fetchWeatherByCoords(lat, lon) {
 ───────────────────────────────────────────── */
 function handleApiErrors(res) {
   if (res.ok) return;
-  if (res.status === 401) throw new Error('API Key inválida. Configure sua chave no arquivo script.js');
+  if (res.status === 401) {
+    throw new Error('API Key inválida ou não autorizada. Verifique em script.js se a chave está correta, ativa e sem espaços extras.');
+  }
   if (res.status === 404) throw new Error('Cidade não encontrada. Verifique o nome e tente novamente.');
   throw new Error(`Erro ao buscar dados (código ${res.status}). Tente novamente.`);
 }
@@ -226,7 +249,7 @@ function handleApiErrors(res) {
 /* ─────────────────────────────────────────────
    Renderização da UI
 ───────────────────────────────────────────── */
-function renderUI(current, forecast) {
+function renderUI(current, forecast, oneCall) {
   // ── Informações básicas ──────────────────
   $('city-name').textContent   = currentCityDisplay;
   $('country-date').textContent = formatDate(new Date(current.dt * 1000));
@@ -260,10 +283,17 @@ function renderUI(current, forecast) {
   updateBackground(current.weather[0].id, iconCode);
 
   // ── Previsão por hora ────────────────────
-  renderHourly(forecast.list.slice(0, 9));
+  renderHourly(oneCall?.hourly ? oneCall.hourly.slice(0, 9) : forecast.list.slice(0, 9));
 
   // ── Previsão por dia ─────────────────────
   renderDaily(forecast.list);
+
+  // ── Mapa do tempo ────────────────────────
+  initWeatherMap(current.coord.lat, current.coord.lon);
+
+  // ── Timelapse ────────────────────────────
+  currentForecast = oneCall?.hourly ? oneCall.hourly.slice(0, 24) : forecast.list.slice(0, 24);
+  initTimelapse();
 }
 
 /* ─────────────────────────────────────────────
@@ -273,13 +303,14 @@ function renderHourly(list) {
   const container = $('hourly-carousel');
   const now       = Date.now() / 1000;
 
-  container.innerHTML = list.map((item, idx) => {
+  container.innerHTML = list.map((item) => {
     const date = new Date(item.dt * 1000);
     const hhmm = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     const temp  = Math.round(item.main.temp);
     const icon  = item.weather[0].icon;
     const pop   = Math.round((item.pop ?? 0) * 100);
-    const isNow = idx === 0;
+
+    const isNow = Math.abs(item.dt - now) < 3600; // hora atual ( +/- 1h )
 
     return `
       <div class="hourly-card ${isNow ? 'highlight' : ''}">
@@ -458,4 +489,96 @@ function hexToRgba(hex, alpha) {
   const g = parseInt(c.slice(2,4), 16);
   const b = parseInt(c.slice(4,6), 16);
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+/* ─────────────────────────────────────────────
+   Mapa do Tempo
+───────────────────────────────────────────── */
+function initWeatherMap(lat, lon) {
+  const mapContainer = $('weather-map');
+  mapContainer.innerHTML = '';
+  if (map) {
+    map.off();
+    map.remove();
+    map = null;
+  }
+
+  map = L.map('weather-map').setView([lat, lon], 8);
+
+  // Base layer (OpenStreetMap)
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Weather layer (temperatura)
+  L.tileLayer(`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${API_KEY}`, {
+    attribution: '© OpenWeatherMap',
+    opacity: 0.6
+  }).addTo(map);
+
+  // Marker na localização
+  L.marker([lat, lon]).addTo(map)
+    .bindPopup(currentCityDisplay)
+    .openPopup();
+
+  // Garantir o redimensionamento correto quando o mapa estiver em seção dinâmica
+  setTimeout(() => map.invalidateSize(), 150);
+}
+
+/* ─────────────────────────────────────────────
+   Timelapse da Temperatura
+───────────────────────────────────────────── */
+function initTimelapse() {
+  if (!currentForecast || currentForecast.length === 0) return;
+
+  const slider = $('timelapse-slider');
+  const playBtn = $('timelapse-play');
+  const pauseBtn = $('timelapse-pause');
+
+  slider.max = currentForecast.length - 1;
+
+  const now = Date.now() / 1000;
+  const closestNowIndex = currentForecast.findIndex(item => Math.abs(item.dt - now) < 3600);
+  currentTimelapseIndex = closestNowIndex >= 0 ? closestNowIndex : 0;
+  slider.value = currentTimelapseIndex;
+
+  updateTimelapseDisplay(currentTimelapseIndex);
+
+  // Substitui listeners antigos para evitar duplicação em múltiplas buscas.
+  slider.oninput = (e) => {
+    currentTimelapseIndex = parseInt(e.target.value, 10);
+    updateTimelapseDisplay(currentTimelapseIndex);
+  };
+
+  playBtn.onclick = startTimelapse;
+  pauseBtn.onclick = stopTimelapse;
+}
+
+function updateTimelapseDisplay(index) {
+  if (!currentForecast || index >= currentForecast.length) return;
+
+  const item = currentForecast[index];
+  const date = new Date(item.dt * 1000);
+  const time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const temp = Math.round(item.main.temp);
+
+  $('timelapse-time').textContent = time;
+  $('timelapse-temp').textContent = `${temp}°C`;
+}
+
+function startTimelapse() {
+  if (timelapseInterval) return;
+
+  timelapseInterval = setInterval(() => {
+    currentTimelapseIndex = (currentTimelapseIndex + 1) % currentForecast.length;
+    $('timelapse-slider').value = currentTimelapseIndex;
+    updateTimelapseDisplay(currentTimelapseIndex);
+  }, 1000); // 1 segundo por hora
+}
+
+function stopTimelapse() {
+  if (timelapseInterval) {
+    clearInterval(timelapseInterval);
+    timelapseInterval = null;
+  }
 }

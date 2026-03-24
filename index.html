@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -152,6 +153,28 @@
         <div class="daily-list" id="daily-list"></div>
       </section>
 
+      <!-- Weather Map -->
+      <section class="forecast-section">
+        <h2 class="section-title">🗺️ Mapa do Tempo</h2>
+        <div id="weather-map" class="weather-map"></div>
+      </section>
+
+      <!-- Temperature Timelapse -->
+      <section class="forecast-section">
+        <h2 class="section-title">⏱️ Timelapse Diário</h2>
+        <div class="timelapse-container">
+          <div class="timelapse-display" id="timelapse-display">
+            <div class="timelapse-time" id="timelapse-time">--:--</div>
+            <div class="timelapse-temp" id="timelapse-temp">--°C</div>
+          </div>
+          <div class="timelapse-controls">
+            <button id="timelapse-play" class="btn-timelapse">▶️ Play</button>
+            <button id="timelapse-pause" class="btn-timelapse">⏸️ Pause</button>
+            <input type="range" id="timelapse-slider" min="0" max="23" value="0" class="timelapse-slider">
+          </div>
+        </div>
+      </section>
+
     </main>
 
     <!-- Empty State -->
@@ -163,6 +186,7 @@
 
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
