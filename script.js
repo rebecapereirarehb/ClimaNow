@@ -2,13 +2,12 @@
    CLIMA — Weather App  |  script.js
    ============================================
    🔑 CONFIGURAÇÃO:
-   Substitua 'YOUR_API_KEY_HERE' pela sua chave
-   gratuita do OpenWeatherMap:
-   https://openweathermap.org/api
+   A chave de API é configurada no arquivo .env
+   e usada pelo backend seguro em server.js
    ============================================ */
 
-const API_KEY  = '3e283ad17d6fdf3ec643837613c94443';
-const BASE_URL = 'https://api.openweathermap.org/data/2.5';
+// API_KEY agora é gerenciada pelo backend
+const BASE_URL = '/api';
 
 /* ─────────────────────────────────────────────
    Estado global
@@ -49,17 +48,6 @@ const emptyState       = $('empty-state');
    Inicialização
 ───────────────────────────────────────────── */
 (function init() {
-  // Banner se API key não foi configurada
-  if (!API_KEY || API_KEY === '3e283ad17d6fdf3ec643837613c94443') {
-    apiBanner.classList.remove('hidden');
-  }
-
-  // Se estiver usando a chave de exemplo fixa do projeto, avisar para substituir
-  if (API_KEY && API_KEY === '3e283ad17d6fdf3ec643837613c94443') {
-    apiBanner.classList.remove('hidden');
-    apiBanner.querySelector('span').textContent = '⚠️ Você está usando a chave pública de exemplo. Troque pela sua chave OpenWeatherMap em script.js';
-  }
-
   // Tema
   applyTheme();
 
@@ -174,8 +162,8 @@ window.fetchWeather = async city => {
   showLoading();
   try {
     const [currentRes, forecastRes] = await Promise.all([
-      fetch(`${BASE_URL}/weather?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric&lang=pt_br`),
-      fetch(`${BASE_URL}/forecast?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric&lang=pt_br`)
+      fetch(`${BASE_URL}/weather?q=${encodeURIComponent(city)}`),
+      fetch(`${BASE_URL}/forecast?q=${encodeURIComponent(city)}`)
     ]);
 
     handleApiErrors(currentRes);
@@ -185,7 +173,7 @@ window.fetchWeather = async city => {
     const forecast = await forecastRes.json();
 
     // One Call para previsão horária (1h) e uso no timelapse
-    const oneCallRes = await fetch(`${BASE_URL}/onecall?lat=${current.coord.lat}&lon=${current.coord.lon}&exclude=minutely,daily,alerts&appid=${API_KEY}&units=metric&lang=pt_br`);
+    const oneCallRes = await fetch(`${BASE_URL}/onecall?lat=${current.coord.lat}&lon=${current.coord.lon}`);
     handleApiErrors(oneCallRes);
     const oneCall = await oneCallRes.json();
 
@@ -208,8 +196,8 @@ window.fetchWeather = async city => {
 async function fetchWeatherByCoords(lat, lon) {
   try {
     const [currentRes, forecastRes] = await Promise.all([
-      fetch(`${BASE_URL}/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=pt_br`),
-      fetch(`${BASE_URL}/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=pt_br`)
+      fetch(`${BASE_URL}/weather?lat=${lat}&lon=${lon}`),
+      fetch(`${BASE_URL}/forecast?lat=${lat}&lon=${lon}`)
     ]);
 
     handleApiErrors(currentRes);
@@ -218,7 +206,7 @@ async function fetchWeatherByCoords(lat, lon) {
     const current  = await currentRes.json();
     const forecast = await forecastRes.json();
 
-    const oneCallRes = await fetch(`${BASE_URL}/onecall?lat=${current.coord.lat}&lon=${current.coord.lon}&exclude=minutely,daily,alerts&appid=${API_KEY}&units=metric&lang=pt_br`);
+    const oneCallRes = await fetch(`${BASE_URL}/onecall?lat=${current.coord.lat}&lon=${current.coord.lon}`);
     handleApiErrors(oneCallRes);
     const oneCall = await oneCallRes.json();
 
