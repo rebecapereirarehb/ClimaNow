@@ -499,7 +499,7 @@ function initWeatherMap(lat, lon) {
   }).addTo(map);
 
   // Weather layer (temperatura)
-  L.tileLayer(`https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${API_KEY}`, {
+L.tileLayer(`/api/map?z={z}&x={x}&y={y}`, {
     attribution: '© OpenWeatherMap',
     opacity: 0.6
   }).addTo(map);
@@ -548,7 +548,7 @@ function updateTimelapseDisplay(index) {
   const item = currentForecast[index];
   const date = new Date(item.dt * 1000);
   const time = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  const temp = Math.round(item.main.temp);
+  const temp = Math.round(item.temp ?? item.main?.temp);
 
   $('timelapse-time').textContent = time;
   $('timelapse-temp').textContent = `${temp}°C`;
